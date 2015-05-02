@@ -12,7 +12,16 @@ dbGetConnection = function(drv, reg, ...) {
 
 dbGetConnection.SQLiteDriver = function(drv, reg, flags = "ro", ...) {
   flags = switch(flags, "ro" = SQLITE_RO, "rw" = SQLITE_RW, "rwc" = SQLITE_RWC)
-  opts = list(dbname = file.path(reg$file.dir, "BatchJobs.db"), flags = flags, drv = drv)
+  
+  if ("db.name" %in% names(reg$db.options))
+  {
+    dbname <- reg$db.options$db.name
+    
+  }else{
+    dbname <- file.path(reg$file.dir, "BatchJobs.db")
+  }
+  
+  opts = list(dbname = dbname, flags = flags, drv = drv)
   con = do.call(dbConnect, args = c(dropNamed(reg$db.options, "pragmas"), opts))
   for (pragma in reg$db.options$pragmas)
     dbClearResult(dbSendQuery(con, sprintf("PRAGMA %s", pragma)))
