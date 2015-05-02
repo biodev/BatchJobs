@@ -17,7 +17,7 @@ makeClusterFunctionsHTCondor <- function()
     submitJob <- function(conf, reg, job.name, rscript, log.file, job.dir, resources,...)
     {
         outfile =  cfBrewTemplate(conf, HTCondor.templ, rscript, "job")
-        res = .runOSCommandLinux("condor_submit", outfile, stop.on.exit.code = FALSE)
+        res = runOSCommandLinux("condor_submit", outfile, stop.on.exit.code = FALSE)
         if (res$exit.code > 0L) {
              cfHandleUnknownSubmitError("condor_submit", res$exit.code, 
                 res$output)
@@ -41,7 +41,7 @@ makeClusterFunctionsHTCondor <- function()
     
     listJobs <- function(conf, reg){
       
-        res <- .runOSCommandLinux("condor_q", c("-submitter", "`whoami`"), stop.on.exit.code = FALSE)
+        res <- runOSCommandLinux("condor_q", c("-submitter", "`whoami`"), stop.on.exit.code = FALSE)
         #deal with the case that no jobs exist for the user as the condor_q command...
         if(res$exit.code > 0L && res$output == "Error: Collector has no record of schedd/submitter"){
             return(integer(0))
