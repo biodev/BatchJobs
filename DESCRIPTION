@@ -34,4 +34,4 @@ Suggests:
     testthat
 LazyData: yes
 ByteCompile: yes
-Version: 1.7
+Version: 1.7.001
