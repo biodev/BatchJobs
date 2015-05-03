@@ -1,11 +1,13 @@
 makeClusterFunctionsHTCondor <- function()
 {
+    #was this
+   #arguments=CMD BATCH --no-save --no-restore <%= rscript %> /dev/stdout
    
     HTCondor.templ <- '
     ###Common parameters across all inputs
     Universe=<%= resources$universe %>
-    Executable=<%= resources$R.bin.path %>
-    arguments=CMD BATCH --no-save --no-restore <%= rscript %> /dev/stdout
+    Executable=<%= resources$R.bin.path %>script
+    arguments=--no-save --no-restore <%= rscript %>
     request_memory=<%= resources$memory %>
     request_cpus=<%= resources$cpus %>
     output=<%= resources$log.dir %>/stdout.<%= basename(rscript) %>
