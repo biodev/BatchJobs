@@ -19,19 +19,20 @@ Depends:
     methods
 Imports:
     brew,
-    checkmate (>= 1.5.1),
+    checkmate (>= 1.8.0),
+    data.table (>= 1.9.6),
     DBI,
     digest,
-    fail (>= 1.2),
     parallel,
-    RSQLite (>= 1.0.0),
+    RSQLite (>= 1.0.9011),
     sendmailR,
     stats,
-    stringr,
+    stringi (>= 0.4-1),
     utils
 Suggests:
     MASS,
     testthat
 LazyData: yes
 ByteCompile: yes
-Version: 1.7.006
+Version: 1.7
+RoxygenNote: 5.0.1

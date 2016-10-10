@@ -40,7 +40,7 @@ dbDoQueries = function(reg, queries, flags = "ro", max.retries = 100L, sleep = f
     } else {
       ok = try ({
         dbBegin(con)
-        ress = lapply(queries, dbGetQuery, con = con)
+        ress = lapply(queries, dbGetQuery, conn = con)
       }, silent = TRUE)
       if (!is.error(ok)) {
         # this can fail because DB is locked
@@ -93,20 +93,27 @@ dbDoQuery = function(reg, query, flags = "ro", max.retries = 100L, sleep = funct
   stopf("dbDoQuery: max retries (%i) reached, database is still locked!", max.retries)
 }
 
-
 dbAddData = function(reg, tab, data) {
   query = sprintf("INSERT INTO %s_%s (%s) VALUES(%s)", reg$id, tab,
                   collapse(colnames(data)), collapse(rep.int("?", ncol(data))))
   con = dbConnectToJobsDB(reg, flags = "rw")
   on.exit(dbDisconnect(con))
-  dbBegin(con)
-  ok = try(dbGetPreparedQuery(con, query, bind.data = data))
-  if(is.error(ok)) {
-    dbRollback(con)
-    stopf("Error in dbAddData: %s", as.character(ok))
-  }
 
+  dbBegin(con)
+  res = dbSendQuery(con, query)
+  for (i in seq_row(data)) {
+    row = unname(as.list(data[i, ]))
+    dbBind(res, row)
+    ok = try(dbFetch(res))
+    if(is.error(ok)) {
+      dbClearResult(res)
+      dbRollback(con)
+      stopf("Error in dbAddData: %s", as.character(ok))
+    }
+  }
+  dbClearResult(res)
   dbCommit(con)
+
   as.integer(dbGetQuery(con, "SELECT total_changes()"))
 }
 
@@ -168,8 +175,7 @@ dbCreateExpandedJobsView = function(reg) {
 ############################################
 
 #' ONLY FOR INTERNAL USAGE.
-#' @param reg [\code{\link{Registry}}]\cr
-#'   Registry.
+#' @template arg_reg
 #' @param ids [\code{integer}]\cr
 #'   Ids of selected jobs.
 #' @return [list of \code{\link{Job}}]. Retrieved jobs from DB.
@@ -365,27 +371,19 @@ dbMatchJobNames = function(reg, ids, jobnames) {
 }
 
 ############################################
-### DELETE
-############################################
-dbRemoveJobs = function(reg, ids) {
-  query = sprintf("DELETE FROM %s_job_status WHERE job_id IN (%s)", reg$id, collapse(ids))
-  dbDoQuery(reg, query, flags = "rw")
-  query = sprintf("DELETE FROM %1$s_job_def WHERE job_def_id NOT IN (SELECT DISTINCT job_def_id FROM %1$s_job_status)", reg$id)
-  dbDoQuery(reg, query, flags = "rw")
-  return(invisible(TRUE))
-}
-
-
-############################################
 ### Messages
 ############################################
 dbSendMessage = function(reg, msg, staged = useStagedQueries(), fs.timeout = NA_real_) {
+  ## AD HOC/FIXME: Avoid partial matching; some functions pass 'msg' with
+  ## field 'msgs' and some with field 'msg' (e.g. dbMakeMessageError()).
+  msgT <- if ("msgs" %in% names(msg)) msg$msgs else msg$msg
+
   if (staged) {
     fn = getPendingFile(reg, msg$type, msg$ids[1L])
-    writeSQLFile(msg$msg, fn)
+    writeSQLFile(msgT, fn)
     waitForFiles(fn, timeout = fs.timeout)
   } else {
-    dbDoQuery(reg, msg$msg, flags = "rw")
+    dbDoQuery(reg, msgT, flags = "rw")
   }
 }
 
@@ -481,4 +479,13 @@ dbSetJobFunction = function(reg, ids, fun.id) {
 dbSetJobNames = function(reg, ids, jobnames) {
   queries = sprintf("UPDATE %1$s_job_def SET jobname = '%2$s' WHERE job_def_id IN (SELECT job_def_id FROM %1$s_job_status WHERE job_id IN (%3$i))", reg$id, jobnames, ids)
   dbDoQueries(reg, queries, flags = "rw")
+}
+
+# this is used in parallelMap :/
+dbRemoveJobs = function(reg, ids) {
+  query = sprintf("DELETE FROM %s_job_status WHERE job_id IN (%s)", reg$id, collapse(ids))
+  dbDoQuery(reg, query, flags = "rw")
+  query = sprintf("DELETE FROM %1$s_job_def WHERE job_def_id NOT IN (SELECT DISTINCT job_def_id FROM %1$s_job_status)", reg$id)
+  dbDoQuery(reg, query, flags = "rw")
+  return(invisible(TRUE))
 }
