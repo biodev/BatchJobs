@@ -7,12 +7,15 @@ makeClusterFunctionsHTCondor <- function()
     ###Common parameters across all inputs
     Universe=<%= resources$universe %>
     Executable=<%= resources$R.bin.path %>script
+    getenv=True
     arguments=--no-save --no-restore <%= rscript %>
     request_memory=<%= resources$memory %>
     request_cpus=<%= resources$cpus %>
     output=<%= resources$log.dir %>/stdout.<%= basename(rscript) %>
     error=<%= resources$log.dir %>/stderr.<%= basename(rscript) %>
     log=<%= resources$log.dir %>/condor_log.<%= basename(rscript) %>
+    TimeTaken = <%= resources$walltime %>
+    +MaxExecutionTime = $(TimeTaken) 
     queue 1
     '
     
